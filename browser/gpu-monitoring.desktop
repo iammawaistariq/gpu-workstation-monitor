@@ -1,0 +1,9 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=GPU Monitoring
+Comment=GPU Workstation Health Monitor
+Exec=/usr/local/bin/gpu-monitor-browser
+Icon=utilities-system-monitor
+Terminal=false
+Categories=System;Utility;

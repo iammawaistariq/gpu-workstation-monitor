@@ -1,0 +1,20 @@
+{
+  "RestoreOnStartup": 4,
+  "RestoreOnStartupURLs": [
+    "http://127.0.0.1:3000/d/adl5jhz/gpu-monitoring-dashboard?from=now-30m&to=now&timezone=browser&refresh=5s&dtab=Dashboard"
+  ],
+
+  "BackgroundModeEnabled": false,
+
+  "BookmarkBarEnabled": true,
+
+  "ManagedBookmarks": [
+    {
+      "toplevel_name": "Lab Tools"
+    },
+    {
+      "name": "GPU Monitoring",
+      "url": "http://127.0.0.1:3000/d/adl5jhz/gpu-monitoring-dashboard?from=now-30m&to=now&timezone=browser&refresh=5s&dtab=Dashboard"
+    }
+  ]
+}

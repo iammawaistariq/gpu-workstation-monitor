@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=GPU Monitoring
+Comment=Open GPU workstation monitoring dashboard
+Exec=/usr/local/bin/gpu-monitor-browser
+Terminal=false
+X-GNOME-Autostart-enabled=true
+NoDisplay=true

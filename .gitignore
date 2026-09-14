@@ -1,0 +1,30 @@
+# Runtime data
+grafana/data/
+prometheus/data/
+
+# Generated runtime configuration
+.env
+
+# Logs
+*.log
+logs/
+
+# Backups
+backups/
+final-backup/
+*.bak
+*.backup
+
+# Secrets
+secrets/
+credentials/
+admin-credentials
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+
+# Python
+__pycache__/
+*.pyc

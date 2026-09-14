@@ -1,0 +1,523 @@
+groups:
+  - name: gpu_health_rules
+    interval: 5s
+
+    rules:
+
+      ##################################################
+      # 1. GPU ACTIVITY
+      #
+      # GPU is considered ACTIVE only when utilization
+      # is sustained, not because of short desktop spikes.
+      ##################################################
+
+      - record: gpu_activity_active
+        expr: |
+          (
+            avg_over_time(
+              DCGM_FI_DEV_GPU_UTIL{job="dcgm",gpu="0"}[30s]
+            ) >= bool 20
+          )
+          *
+          (
+            max_over_time(
+              DCGM_FI_DEV_GPU_UTIL{job="dcgm",gpu="0"}[30s]
+            ) >= bool 40
+          )
+
+
+      ##################################################
+      # 2. GPU VRAM USAGE %
+      ##################################################
+
+      - record: gpu_vram_percent
+        expr: |
+          100 *
+          DCGM_FI_DEV_FB_USED{job="dcgm",gpu="0"}
+          /
+          (
+            DCGM_FI_DEV_FB_USED{job="dcgm",gpu="0"}
+            +
+            DCGM_FI_DEV_FB_FREE{job="dcgm",gpu="0"}
+          )
+
+
+      ##################################################
+      # 3. SYSTEM RAM USAGE %
+      ##################################################
+
+      - record: system_ram_percent
+        expr: |
+          100 *
+          (
+            1 -
+            (
+              node_memory_MemAvailable_bytes
+              /
+              node_memory_MemTotal_bytes
+            )
+          )
+
+
+      ##################################################
+      # 4. CPU USAGE %
+      ##################################################
+
+      - record: cpu_usage_percent
+        expr: |
+          100 -
+          (
+            avg(
+              rate(
+                node_cpu_seconds_total{mode="idle"}[1m]
+              )
+            )
+            * 100
+          )
+
+
+      ##################################################
+      # 5. GPU EMERGENCY
+      #
+      # Emergency if:
+      # GPU temperature >= 90C
+      # OR
+      # VRAM usage >= 98%
+      ##################################################
+
+      - record: gpu_status_emergency
+        expr: |
+          clamp_max(
+            (
+              DCGM_FI_DEV_GPU_TEMP{job="dcgm",gpu="0"} >= bool 90
+            )
+            +
+            (
+              gpu_vram_percent >= bool 98
+            ),
+            1
+          )
+
+
+      ##################################################
+      # 6. POSSIBLE THERMAL THROTTLING
+      #
+      # Sustained heavy GPU load
+      # + sustained low clock
+      # + high temperature
+      ##################################################
+
+      - record: gpu_status_possible_thermal_throttling
+        expr: |
+          (
+            avg_over_time(
+              DCGM_FI_DEV_GPU_UTIL{job="dcgm",gpu="0"}[1m]
+            ) >= bool 50
+          )
+          *
+          (
+            avg_over_time(
+              DCGM_FI_DEV_SM_CLOCK{job="dcgm",gpu="0"}[1m]
+            ) < bool 800
+          )
+          *
+          (
+            avg_over_time(
+              DCGM_FI_DEV_GPU_TEMP{job="dcgm",gpu="0"}[1m]
+            ) >= bool 87
+          )
+
+
+      ##################################################
+      # 7. POSSIBLE POWER THROTTLING
+      #
+      # Sustained heavy GPU load
+      # + sustained low clock
+      # + temperature below thermal-throttle range
+      # + power near A2000 power limit
+      ##################################################
+
+      - record: gpu_status_possible_power_throttling
+        expr: |
+          (
+            avg_over_time(
+              DCGM_FI_DEV_GPU_UTIL{job="dcgm",gpu="0"}[1m]
+            ) >= bool 50
+          )
+          *
+          (
+            avg_over_time(
+              DCGM_FI_DEV_SM_CLOCK{job="dcgm",gpu="0"}[1m]
+            ) < bool 800
+          )
+          *
+          (
+            avg_over_time(
+              DCGM_FI_DEV_GPU_TEMP{job="dcgm",gpu="0"}[1m]
+            ) < bool 87
+          )
+          *
+          (
+            avg_over_time(
+              DCGM_FI_DEV_POWER_USAGE{job="dcgm",gpu="0"}[1m]
+            ) >= bool 66.5
+          )
+
+
+      ##################################################
+      # 8. VRAM CRITICAL
+      ##################################################
+
+      - record: gpu_status_vram_critical
+        expr: |
+          gpu_vram_percent >= bool 95
+
+
+      ##################################################
+      # 9. VRAM PRESSURE
+      ##################################################
+
+      - record: gpu_status_vram_pressure
+        expr: |
+          (
+            gpu_vram_percent >= bool 85
+          )
+          *
+          (
+            gpu_vram_percent < bool 95
+          )
+
+
+      ##################################################
+      # 10. HIGH GPU TEMPERATURE
+      #
+      # 85C - 86C
+      ##################################################
+
+      - record: gpu_status_high_temperature
+        expr: |
+          (
+            DCGM_FI_DEV_GPU_TEMP{job="dcgm",gpu="0"} >= bool 85
+          )
+          *
+          (
+            DCGM_FI_DEV_GPU_TEMP{job="dcgm",gpu="0"} < bool 87
+          )
+
+
+      ##################################################
+      # 11. REDUCED CLOCK
+      #
+      # IMPORTANT:
+      # Low clock while IDLE is completely normal.
+      #
+      # Reduced clock is reported only when:
+      # sustained utilization >= 50%
+      # AND sustained clock < 800 MHz
+      # AND temperature < 87C
+      # AND power < 66.5W
+      ##################################################
+
+      - record: gpu_status_reduced_clock
+        expr: |
+          (
+            avg_over_time(
+              DCGM_FI_DEV_GPU_UTIL{job="dcgm",gpu="0"}[1m]
+            ) >= bool 50
+          )
+          *
+          (
+            avg_over_time(
+              DCGM_FI_DEV_SM_CLOCK{job="dcgm",gpu="0"}[1m]
+            ) < bool 800
+          )
+          *
+          (
+            avg_over_time(
+              DCGM_FI_DEV_GPU_TEMP{job="dcgm",gpu="0"}[1m]
+            ) < bool 87
+          )
+          *
+          (
+            avg_over_time(
+              DCGM_FI_DEV_POWER_USAGE{job="dcgm",gpu="0"}[1m]
+            ) < bool 66.5
+          )
+
+
+      ##################################################
+      # 12. FINAL GPU STATUS CODE
+      #
+      # Priority:
+      #
+      # 90 = EMERGENCY
+      # 80 = POSSIBLE THERMAL THROTTLING
+      # 70 = POSSIBLE POWER THROTTLING
+      # 60 = VRAM CRITICAL
+      # 50 = VRAM PRESSURE
+      # 40 = REDUCED CLOCK
+      # 30 = HIGH TEMPERATURE
+      # 10 = ACTIVE - HEALTHY
+      #  0 = IDLE
+      ##################################################
+
+      - record: gpu_status_code
+        expr: |
+          90 * gpu_status_emergency
+
+          +
+
+          80 *
+          (1 - gpu_status_emergency)
+          *
+          gpu_status_possible_thermal_throttling
+
+          +
+
+          70 *
+          (1 - gpu_status_emergency)
+          *
+          (1 - gpu_status_possible_thermal_throttling)
+          *
+          gpu_status_possible_power_throttling
+
+          +
+
+          60 *
+          (1 - gpu_status_emergency)
+          *
+          (1 - gpu_status_possible_thermal_throttling)
+          *
+          (1 - gpu_status_possible_power_throttling)
+          *
+          gpu_status_vram_critical
+
+          +
+
+          50 *
+          (1 - gpu_status_emergency)
+          *
+          (1 - gpu_status_possible_thermal_throttling)
+          *
+          (1 - gpu_status_possible_power_throttling)
+          *
+          (1 - gpu_status_vram_critical)
+          *
+          gpu_status_vram_pressure
+
+          +
+
+          40 *
+          (1 - gpu_status_emergency)
+          *
+          (1 - gpu_status_possible_thermal_throttling)
+          *
+          (1 - gpu_status_possible_power_throttling)
+          *
+          (1 - gpu_status_vram_critical)
+          *
+          (1 - gpu_status_vram_pressure)
+          *
+          gpu_status_reduced_clock
+
+          +
+
+          30 *
+          (1 - gpu_status_emergency)
+          *
+          (1 - gpu_status_possible_thermal_throttling)
+          *
+          (1 - gpu_status_possible_power_throttling)
+          *
+          (1 - gpu_status_vram_critical)
+          *
+          (1 - gpu_status_vram_pressure)
+          *
+          (1 - gpu_status_reduced_clock)
+          *
+          gpu_status_high_temperature
+
+          +
+
+          10 *
+          (1 - gpu_status_emergency)
+          *
+          (1 - gpu_status_possible_thermal_throttling)
+          *
+          (1 - gpu_status_possible_power_throttling)
+          *
+          (1 - gpu_status_vram_critical)
+          *
+          (1 - gpu_status_vram_pressure)
+          *
+          (1 - gpu_status_reduced_clock)
+          *
+          (1 - gpu_status_high_temperature)
+          *
+          gpu_activity_active
+
+
+      ##################################################
+      # 13. GPU BASE HEALTH SCORE
+      #
+      # Temperature and VRAM pressure reduce score.
+      ##################################################
+
+      - record: gpu_base_health_score
+        expr: |
+          clamp_min(
+            100
+            -
+            clamp_min(
+              (
+                DCGM_FI_DEV_GPU_TEMP{job="dcgm",gpu="0"} - 80
+              ) * 5,
+              0
+            )
+            -
+            clamp_min(
+              (
+                gpu_vram_percent - 80
+              ) * 2,
+              0
+            ),
+            0
+          )
+
+
+      ##################################################
+      # 14. GPU STATUS HEALTH CAP
+      #
+      # Diagnostic problems can cap GPU health even if
+      # temperature/VRAM alone look healthy.
+      ##################################################
+
+      - record: gpu_status_health_cap
+        expr: |
+          100
+          -
+          15 * (gpu_status_code == bool 30)
+          -
+          25 * (gpu_status_code == bool 40)
+          -
+          20 * (gpu_status_code == bool 50)
+          -
+          40 * (gpu_status_code == bool 60)
+          -
+          50 * (gpu_status_code == bool 70)
+          -
+          65 * (gpu_status_code == bool 80)
+          -
+          90 * (gpu_status_code == bool 90)
+
+
+      ##################################################
+      # 15. FINAL GPU HEALTH SCORE
+      ##################################################
+
+      - record: gpu_health_score
+        expr: |
+          clamp_max(
+            gpu_base_health_score,
+            scalar(gpu_status_health_cap)
+          )
+
+
+      ##################################################
+      # 16. CPU HEALTH SCORE
+      #
+      # CPU load below 70%:
+      # health remains 100.
+      #
+      # Sustained high CPU load reduces health.
+      ##################################################
+
+      - record: cpu_health_score
+        expr: |
+          clamp_min(
+            100
+            -
+            clamp_min(
+              (
+                cpu_usage_percent - 70
+              ) * 2,
+              0
+            ),
+            0
+          )
+
+
+      ##################################################
+      # 17. SYSTEM RAM HEALTH SCORE
+      ##################################################
+
+      - record: system_ram_health_score
+        expr: |
+          clamp_min(
+            100
+            -
+            clamp_min(
+              (
+                system_ram_percent - 75
+              ) * 3,
+              0
+            ),
+            0
+          )
+
+
+      ##################################################
+      # 18. VRAM HEALTH SCORE
+      ##################################################
+
+      - record: gpu_vram_health_score
+        expr: |
+          clamp_min(
+            100
+            -
+            clamp_min(
+              (
+                gpu_vram_percent - 80
+              ) * 3,
+              0
+            ),
+            0
+          )
+
+
+      ##################################################
+      # 19. MEMORY HEALTH SCORE
+      #
+      # Whichever is worse:
+      # system RAM health OR GPU VRAM health
+      ##################################################
+
+      - record: memory_health_score
+        expr: |
+          clamp_max(
+            vector(
+              scalar(system_ram_health_score)
+            ),
+            scalar(gpu_vram_health_score)
+          )
+
+
+      ##################################################
+      # 20. OVERALL SYSTEM HEALTH SCORE
+      #
+      # GPU    = 70%
+      # CPU    = 20%
+      # Memory = 10%
+      #
+      # GPU problems therefore have the largest impact.
+      ##################################################
+
+      - record: overall_health_score
+        expr: |
+          vector(
+            0.70 * scalar(gpu_health_score)
+            +
+            0.20 * scalar(cpu_health_score)
+            +
+            0.10 * scalar(memory_health_score)
+          )
