@@ -1929,7 +1929,7 @@
     }
   ],
   "preload": false,
-  "refresh": "5s",
+  "refresh": "30s",
   "schemaVersion": 42,
   "tags": [
     "gpu",
@@ -1955,6 +1955,6 @@
   "timezone": "browser",
   "title": "GPU Monitoring Dashboard",
   "uid": "adl5jhz",
-  "version": 56,
+  "version": 58,
   "weekStart": "monday"
 }

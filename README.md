@@ -126,7 +126,7 @@ A reboot is recommended after the first installation.
 
 After installation, Grafana is available locally at:
 
-    http://127.0.0.1:3000
+    http://127.0.0.1:3000/d/adl5jhz/gpu-monitoring-dashboard?from=now-30m&to=now&timezone=browser&refresh=30s&dtab=Dashboard&kiosk
 
 The monitoring dashboard opens automatically through the configured Chrome policy.
 

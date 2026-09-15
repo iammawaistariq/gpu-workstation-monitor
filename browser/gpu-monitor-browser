@@ -1,6 +1,6 @@
 #!/bin/bash
 
-URL="http://127.0.0.1:3000/d/adl5jhz/gpu-monitoring-dashboard?from=now-30m&to=now&timezone=browser&refresh=5s&dtab=Dashboard"
+URL="http://127.0.0.1:3000/d/adl5jhz/gpu-monitoring-dashboard?from=now-30m&to=now&timezone=browser&refresh=30s&dtab=Dashboard&kiosk"
 
 # Wait up to ~60 seconds for Grafana.
 for i in $(seq 1 30); do

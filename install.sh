@@ -7,7 +7,7 @@ INSTALL_DIR="/opt/${APP_NAME}"
 SOURCE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 DASH_UID="adl5jhz"
-DASH_URL="http://127.0.0.1:3000/d/${DASH_UID}/gpu-monitoring-dashboard?from=now-30m&to=now&timezone=browser&refresh=5s&dtab=Dashboard"
+DASH_URL="http://127.0.0.1:3000/d/${DASH_UID}/gpu-monitoring-dashboard?from=now-30m&to=now&timezone=browser&refresh=30s&dtab=Dashboard&kiosk"
 
 LOG="/tmp/gpu-monitoring-install.log"
 
@@ -376,6 +376,16 @@ if grep -q 'allowUiUpdates:' "$PROVIDER"; then
 else
     sed -i \
       '/type: file/a\    allowUiUpdates: false' \
+      "$PROVIDER"
+fi
+
+if grep -q '^[[:space:]]*editable:' "$PROVIDER"; then
+    sed -i \
+      's/^[[:space:]]*editable:.*/    editable: false/' \
+      "$PROVIDER"
+else
+    sed -i \
+      '/disableDeletion:/a\    editable: false' \
       "$PROVIDER"
 fi
 

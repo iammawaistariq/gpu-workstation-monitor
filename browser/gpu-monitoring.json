@@ -1,7 +1,7 @@
 {
   "RestoreOnStartup": 4,
   "RestoreOnStartupURLs": [
-    "http://127.0.0.1:3000/d/adl5jhz/gpu-monitoring-dashboard?from=now-30m&to=now&timezone=browser&refresh=5s&dtab=Dashboard"
+    "http://127.0.0.1:3000/d/adl5jhz/gpu-monitoring-dashboard?from=now-30m&to=now&timezone=browser&refresh=30s&dtab=Dashboard&kiosk"
   ],
 
   "BackgroundModeEnabled": false,
@@ -14,7 +14,7 @@
     },
     {
       "name": "GPU Monitoring",
-      "url": "http://127.0.0.1:3000/d/adl5jhz/gpu-monitoring-dashboard?from=now-30m&to=now&timezone=browser&refresh=5s&dtab=Dashboard"
+      "url": "http://127.0.0.1:3000/d/adl5jhz/gpu-monitoring-dashboard?from=now-30m&to=now&timezone=browser&refresh=30s&dtab=Dashboard&kiosk"
     }
   ]
 }
