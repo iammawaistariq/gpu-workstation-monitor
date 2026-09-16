@@ -101,16 +101,39 @@ info "2/13 - Installing base requirements"
 
 export DEBIAN_FRONTEND=noninteractive
 
-apt-get update
-
-apt-get install -y \
-    ca-certificates \
-    curl \
-    gnupg \
-    jq \
-    openssl \
-    libnotify-bin \
+# Do not contact every configured APT repository unnecessarily.
+# Deployment machines may contain unrelated third-party repositories that
+# are temporarily unavailable. If all required base packages are already
+# installed, continue without running apt-get update.
+BASE_PACKAGES=(
+    ca-certificates
+    curl
+    gnupg
+    jq
+    openssl
+    libnotify-bin
     procps
+)
+
+MISSING_BASE_PACKAGES=()
+
+for pkg in "${BASE_PACKAGES[@]}"; do
+    if ! dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null |
+         grep -q '^install ok installed$'; then
+        MISSING_BASE_PACKAGES+=("$pkg")
+    fi
+done
+
+if (( ${#MISSING_BASE_PACKAGES[@]} > 0 )); then
+    echo "Missing base packages: ${MISSING_BASE_PACKAGES[*]}"
+    echo "Refreshing APT metadata..."
+
+    apt-get         -o Acquire::Retries=1         -o Acquire::http::Timeout=15         -o Acquire::https::Timeout=15         update         || fail "APT metadata refresh failed. Check configured APT repositories."
+
+    apt-get install -y "${MISSING_BASE_PACKAGES[@]}"         || fail "Could not install required base packages."
+else
+    echo "All base requirements already installed; skipping apt-get update."
+fi
 
 
 ########################################
