@@ -108,8 +108,10 @@ The installer verifies that the NVIDIA GPU driver is operational before continui
 
 Clone and install with one command block:
 
-    git clone https://github.com/iammawaistariq/gpu-workstation-monitor.git && \
-    cd gpu-workstation-monitor && \
+    cd "$HOME" && \
+    rm -rf "$HOME/gpu-workstation-monitor" && \
+    git clone https://github.com/iammawaistariq/gpu-workstation-monitor.git "$HOME/gpu-workstation-monitor" && \
+    cd "$HOME/gpu-workstation-monitor" && \
     chmod +x install.sh && \
     sudo ./install.sh
 
