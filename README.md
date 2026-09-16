@@ -106,14 +106,11 @@ The installer verifies that the NVIDIA GPU driver is operational before continui
 
 ## Quick Installation
 
-Clone the repository:
+Clone and install with one command block:
 
-    git clone https://github.com/iammawaistariq/gpu-workstation-monitor.git
-    cd gpu-workstation-monitor
-
-Run the installer:
-
-    chmod +x install.sh
+    git clone https://github.com/iammawaistariq/gpu-workstation-monitor.git && \
+    cd gpu-workstation-monitor && \
+    chmod +x install.sh && \
     sudo ./install.sh
 
 The installer configures the monitoring stack and required dependencies automatically.
@@ -124,9 +121,9 @@ A reboot is recommended after the first installation.
 
 ## Dashboard Access
 
-After installation, Grafana is available locally at:
+After installation, the installer resolves the dashboard URL directly from Grafana.
 
-    http://127.0.0.1:3000/d/adl5jhz/gpu-monitoring-dashboard?from=now-30m&to=now&timezone=browser&refresh=30s&dtab=Dashboard&kiosk
+The final dashboard URL is printed at the end of installation and is also configured automatically in the Chrome integration.
 
 The monitoring dashboard opens automatically through the configured Chrome policy.
 
@@ -228,17 +225,13 @@ After installation:
 
     gpu-workstation-monitor/
     ├── browser/
-    │   ├── gpu-monitor-browser
     │   ├── gpu-monitoring-autostart.desktop
-    │   ├── gpu-monitoring.desktop
-    │   └── gpu-monitoring.json
+    │   └── gpu-monitoring.desktop
     │
     ├── grafana/
     │   ├── dashboards/
-    │   │   └── gpu-monitoring-dashboard.json
+    │   │   └── gpu-monitoring-dashboard-v2.json
     │   └── provisioning/
-    │       ├── dashboards/
-    │       │   └── dashboard.yml
     │       └── datasources/
     │           └── prometheus.yml
     │

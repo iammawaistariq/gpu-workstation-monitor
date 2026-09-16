@@ -76,9 +76,8 @@ services:
     volumes:
       - grafana-data:/var/lib/grafana
 
-      # RW intentionally:
-      # admin edit mode can be enabled later.
-      - ./grafana/dashboards:/var/lib/grafana/dashboards
+      # Grafana provisioning is retained for the Prometheus datasource.
+      # The dashboard itself is deployed by install.sh through Grafana's V2 API.
       - ./grafana/provisioning:/etc/grafana/provisioning
 
     depends_on:
