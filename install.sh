@@ -822,7 +822,7 @@ DASH_PATH="$(
     || fail "Grafana returned an invalid dashboard browser URL."
 
 
-DASH_URL="http://127.0.0.1:3000${DASH_PATH}?from=now-30m&to=now&timezone=browser&refresh=30s&dtab=Dashboard&kiosk"
+DASH_URL="http://127.0.0.1:3000${DASH_PATH}?from=now-30m&to=now&timezone=browser&refresh=30s&dtab=Dashboard&kiosk&hideLogo=true"
 
 
 echo "PASS: Grafana V2 dashboard installed and verified."
