@@ -460,6 +460,94 @@ echo "Configuration validation passed."
 
 info "11/13 - Starting monitoring stack"
 
+########################################
+# Remove legacy monitoring containers
+########################################
+
+# Older releases installed the Compose project from /opt/gpu-monitoring.
+# Fixed container names can therefore conflict with the new portable
+# deployment. Remove ONLY containers that are positively identified as
+# belonging to our gpu-monitoring Compose project.
+#
+# IMPORTANT:
+#   - Docker volumes are NOT removed.
+#   - Unrelated containers are NEVER removed.
+#   - No docker system prune is performed.
+
+echo "Checking for previous GPU Monitoring deployment..."
+
+LEGACY_CONTAINERS=(
+    grafana
+    prometheus
+    node-exporter
+    dcgm-exporter
+)
+
+REMOVED_LEGACY=0
+
+for container in "${LEGACY_CONTAINERS[@]}"; do
+
+    if ! docker container inspect "$container" >/dev/null 2>&1; then
+        continue
+    fi
+
+    compose_project="$(
+        docker container inspect "$container" \
+            --format '{{ index .Config.Labels "com.docker.compose.project" }}' \
+            2>/dev/null
+    )"
+
+    if [[ "$compose_project" == "gpu-monitoring" ]]; then
+
+        echo "Removing previous gpu-monitoring container: $container"
+
+        docker rm -f "$container" >/dev/null \
+            || fail "Could not remove previous monitoring container: $container"
+
+        REMOVED_LEGACY=1
+
+    else
+
+        fail "Container name '$container' is already in use by another Docker project. Refusing to remove it."
+
+    fi
+
+done
+
+# Remove the old monitoring network only when:
+#   1. it belongs to gpu-monitoring, and
+#   2. Docker allows its removal because nothing else is using it.
+#
+# Failure to remove an in-use network is intentionally non-fatal.
+
+if docker network inspect monitoring >/dev/null 2>&1; then
+
+    network_project="$(
+        docker network inspect monitoring \
+            --format '{{ index .Labels "com.docker.compose.project" }}' \
+            2>/dev/null
+    )"
+
+    if [[ "$network_project" == "gpu-monitoring" ]]; then
+
+        if docker network rm monitoring >/dev/null 2>&1; then
+            echo "Removed previous gpu-monitoring network: monitoring"
+        else
+            echo "Existing monitoring network is still in use; leaving it unchanged."
+        fi
+
+    fi
+
+fi
+
+if [[ "$REMOVED_LEGACY" -eq 1 ]]; then
+    echo "Previous GPU Monitoring containers removed."
+    echo "Persistent Docker volumes were preserved."
+else
+    echo "No conflicting previous GPU Monitoring containers found."
+fi
+
+
 cd "$INSTALL_DIR"
 
 docker compose pull
