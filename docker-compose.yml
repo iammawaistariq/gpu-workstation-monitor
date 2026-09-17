@@ -61,7 +61,7 @@ services:
     restart: unless-stopped
 
     ports:
-      - "127.0.0.1:3000:3000"
+      - "127.0.0.1:${GRAFANA_PORT:-3000}:3000"
 
     environment:
       GF_AUTH_ANONYMOUS_ENABLED: "true"

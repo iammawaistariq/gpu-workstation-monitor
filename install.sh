@@ -412,20 +412,60 @@ info "9/13 - Configuring Grafana access"
 
 ENV_FILE="$INSTALL_DIR/.env"
 
-if [[ ! -f "$ENV_FILE" ]]; then
+if [[ -f "$ENV_FILE" ]]; then
+    ADMIN_PASSWORD="$(grep '^GRAFANA_ADMIN_PASSWORD=' "$ENV_FILE" | cut -d= -f2-)"
+    SAVED_GRAFANA_PORT="$(grep '^GRAFANA_PORT=' "$ENV_FILE" | cut -d= -f2-)"
+else
+    ADMIN_PASSWORD=""
+    SAVED_GRAFANA_PORT=""
+fi
 
+if [[ -z "$ADMIN_PASSWORD" ]]; then
     ADMIN_PASSWORD="$(openssl rand -base64 24 | tr -d '\n')"
+fi
 
-    cat >"$ENV_FILE" <<EOF
-GRAFANA_ADMIN_PASSWORD=${ADMIN_PASSWORD}
-EOF
+# Prefer the previously selected port when it is still available.
+# Otherwise start at 3000 and find the first free localhost port.
+port_is_free() {
+    local port="$1"
 
-    chmod 600 "$ENV_FILE"
+    if command -v ss >/dev/null 2>&1; then
+        ! ss -ltnH 2>/dev/null |
+            awk '{print $4}' |
+            grep -Eq "(^|:)${port}$"
+    else
+        ! curl -fsS --connect-timeout 1             "http://127.0.0.1:${port}/" >/dev/null 2>&1
+    fi
+}
+
+if [[ "$SAVED_GRAFANA_PORT" =~ ^[0-9]+$ ]] &&
+   port_is_free "$SAVED_GRAFANA_PORT"; then
+
+    GRAFANA_PORT="$SAVED_GRAFANA_PORT"
 
 else
+    GRAFANA_PORT=3000
 
-    ADMIN_PASSWORD="$(grep '^GRAFANA_ADMIN_PASSWORD=' "$ENV_FILE" | cut -d= -f2-)"
+    while ! port_is_free "$GRAFANA_PORT"; do
+        GRAFANA_PORT=$((GRAFANA_PORT + 1))
+
+        if [[ "$GRAFANA_PORT" -gt 3099 ]]; then
+            fail "No free Grafana port found in range 3000-3099."
+        fi
+    done
 fi
+
+GRAFANA_BASE_URL="http://127.0.0.1:${GRAFANA_PORT}"
+
+cat >"$ENV_FILE" <<EOF
+GRAFANA_ADMIN_PASSWORD=${ADMIN_PASSWORD}
+GRAFANA_PORT=${GRAFANA_PORT}
+EOF
+
+chmod 600 "$ENV_FILE"
+
+echo "Grafana host port: ${GRAFANA_PORT}"
+echo "Grafana URL: ${GRAFANA_BASE_URL}"
 
 
 # V2 dashboard is installed through Grafana's API after Grafana
@@ -497,9 +537,16 @@ for container in "${LEGACY_CONTAINERS[@]}"; do
             2>/dev/null
     )"
 
-    if [[ "$compose_project" == "gpu-monitoring" ]]; then
+    compose_workdir="$(
+        docker container inspect "$container" \
+            --format '{{ index .Config.Labels "com.docker.compose.project.working_dir" }}' \
+            2>/dev/null
+    )"
 
-        echo "Removing previous gpu-monitoring container: $container"
+    if [[ "$compose_project" == "gpu-monitoring" ]] ||
+       [[ "$compose_workdir" == "$INSTALL_DIR" ]]; then
+
+        echo "Removing previous GPU Monitoring container: $container"
 
         docker rm -f "$container" >/dev/null \
             || fail "Could not remove previous monitoring container: $container"
@@ -578,7 +625,7 @@ GRAFANA_READY=0
 
 for i in $(seq 1 60); do
 
-    if curl -fsS http://127.0.0.1:3000/api/health >/dev/null 2>&1; then
+    if curl -fsS ${GRAFANA_BASE_URL}/api/health >/dev/null 2>&1; then
         GRAFANA_READY=1
         break
     fi
@@ -608,7 +655,7 @@ docker exec grafana \
 DATASOURCES="$(
     curl -fsS \
       -u "admin:${ADMIN_PASSWORD}" \
-      http://127.0.0.1:3000/api/datasources
+      ${GRAFANA_BASE_URL}/api/datasources
 )" || fail "Could not query Grafana datasources."
 
 
@@ -643,7 +690,7 @@ PROM_DS_HTTP="$(
       -u "admin:${ADMIN_PASSWORD}" \
       -o ${TMP_DIR}/prometheus-health.json \
       -w '%{http_code}' \
-      "http://127.0.0.1:3000/api/datasources/uid/${PROM_UID}/health"
+      "${GRAFANA_BASE_URL}/api/datasources/uid/${PROM_UID}/health"
 )"
 
 
@@ -757,7 +804,7 @@ EXISTING_HTTP="$(
       -u "admin:${ADMIN_PASSWORD}" \
       -o ${TMP_DIR}/existing-v2.json \
       -w '%{http_code}' \
-      "http://127.0.0.1:3000/apis/dashboard.grafana.app/v2/namespaces/default/dashboards/${DASH_RESOURCE_NAME}"
+      "${GRAFANA_BASE_URL}/apis/dashboard.grafana.app/v2/namespaces/default/dashboards/${DASH_RESOURCE_NAME}"
 )"
 
 
@@ -788,7 +835,7 @@ if [[ "$EXISTING_HTTP" == "200" ]]; then
           --data-binary @"$V2_RUNTIME" \
           -o ${TMP_DIR}/v2-response.json \
           -w '%{http_code}' \
-          "http://127.0.0.1:3000/apis/dashboard.grafana.app/v2/namespaces/default/dashboards/${DASH_RESOURCE_NAME}"
+          "${GRAFANA_BASE_URL}/apis/dashboard.grafana.app/v2/namespaces/default/dashboards/${DASH_RESOURCE_NAME}"
     )"
 
     [[ "$DASH_HTTP" == "200" ]] \
@@ -805,7 +852,7 @@ elif [[ "$EXISTING_HTTP" == "404" ]]; then
           --data-binary @"$V2_RUNTIME" \
           -o ${TMP_DIR}/v2-response.json \
           -w '%{http_code}' \
-          'http://127.0.0.1:3000/apis/dashboard.grafana.app/v2/namespaces/default/dashboards'
+          "${GRAFANA_BASE_URL}/apis/dashboard.grafana.app/v2/namespaces/default/dashboards"
     )"
 
     [[ "$DASH_HTTP" == "201" ]] \
@@ -819,7 +866,7 @@ fi
 # Read it back from Grafana rather than trusting the request.
 curl -fsS \
   -u "admin:${ADMIN_PASSWORD}" \
-  "http://127.0.0.1:3000/apis/dashboard.grafana.app/v2/namespaces/default/dashboards/${DASH_RESOURCE_NAME}" \
+  "${GRAFANA_BASE_URL}/apis/dashboard.grafana.app/v2/namespaces/default/dashboards/${DASH_RESOURCE_NAME}" \
   > ${TMP_DIR}/installed-v2.json \
   || fail "Could not read installed V2 dashboard."
 
@@ -872,7 +919,7 @@ VIEWER_PERMISSION_HTTP="$(
       -X POST \
       -o ${TMP_DIR}/viewer-permission.json \
       -w '%{http_code}' \
-      "http://127.0.0.1:3000/api/dashboards/uid/${DASH_RESOURCE_NAME}/permissions" \
+      "${GRAFANA_BASE_URL}/api/dashboards/uid/${DASH_RESOURCE_NAME}/permissions" \
       --data '{
         "items": [
           {
@@ -891,7 +938,7 @@ VIEWER_PERMISSION_HTTP="$(
 VIEWER_PERMISSION_COUNT="$(
     curl -fsS \
       -u "admin:${ADMIN_PASSWORD}" \
-      "http://127.0.0.1:3000/api/dashboards/uid/${DASH_RESOURCE_NAME}/permissions" |
+      "${GRAFANA_BASE_URL}/api/dashboards/uid/${DASH_RESOURCE_NAME}/permissions" |
     jq '
       [
         .[]
@@ -915,7 +962,7 @@ ANON_DTO_HTTP="$(
     curl -sS \
       -o ${TMP_DIR}/anonymous-dto.json \
       -w '%{http_code}' \
-      "http://127.0.0.1:3000/apis/dashboard.grafana.app/v2/namespaces/default/dashboards/${DASH_RESOURCE_NAME}/dto"
+      "${GRAFANA_BASE_URL}/apis/dashboard.grafana.app/v2/namespaces/default/dashboards/${DASH_RESOURCE_NAME}/dto"
 )"
 
 [[ "$ANON_DTO_HTTP" == "200" ]] \
@@ -931,7 +978,7 @@ echo "PASS: anonymous Viewer has read-only dashboard access."
 DASH_LOOKUP="$(
     curl -fsS \
       -u "admin:${ADMIN_PASSWORD}" \
-      "http://127.0.0.1:3000/api/dashboards/uid/${DASH_RESOURCE_NAME}"
+      "${GRAFANA_BASE_URL}/api/dashboards/uid/${DASH_RESOURCE_NAME}"
 )" || fail "Could not resolve dashboard through Grafana classic API."
 
 
@@ -954,7 +1001,7 @@ DASH_PATH="$(
     || fail "Grafana returned an invalid dashboard browser URL."
 
 
-DASH_URL="http://127.0.0.1:3000${DASH_PATH}?from=now-30m&to=now&timezone=browser&refresh=30s&dtab=Dashboard&kiosk&hideLogo=true"
+DASH_URL="${GRAFANA_BASE_URL}${DASH_PATH}?from=now-30m&to=now&timezone=browser&refresh=30s&dtab=Dashboard&kiosk&hideLogo=true"
 
 
 echo "PASS: Grafana V2 dashboard installed and verified."
@@ -1018,7 +1065,7 @@ URL='${DASH_URL}'
 
 for i in \$(seq 1 60); do
 
-    if curl -fsS http://127.0.0.1:3000/api/health >/dev/null 2>&1; then
+    if curl -fsS ${GRAFANA_BASE_URL}/api/health >/dev/null 2>&1; then
         break
     fi
 
@@ -1087,7 +1134,7 @@ import sys
 
 url, destination = sys.argv[1:3]
 
-if not url.startswith("http://127.0.0.1:3000/d/"):
+if not (url.startswith("http://127.0.0.1:") and "/d/" in url):
     raise SystemExit("Refusing invalid Grafana dashboard URL: " + repr(url))
 
 policy = {
@@ -1125,7 +1172,7 @@ cat >/usr/local/bin/gpu-monitor-edit-on <<'EOF'
 
 echo "Dashboard is managed as a Grafana V2 resource."
 echo "Use the Grafana admin UI for maintenance:"
-echo "http://127.0.0.1:3000/login"
+echo "${GRAFANA_BASE_URL}/login"
 echo
 echo "The production installer keeps the deployed dashboard view-only."
 EOF
@@ -1151,7 +1198,7 @@ mkdir -p /etc/gpu-monitoring
 cat >/etc/gpu-monitoring/admin-credentials <<EOF
 Grafana Admin
 =============
-URL: http://127.0.0.1:3000/login
+URL: ${GRAFANA_BASE_URL}/login
 Username: admin
 Password: ${ADMIN_PASSWORD}
 
