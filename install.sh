@@ -186,13 +186,26 @@ if ! command -v docker >/dev/null 2>&1; then
 
 fi
 
-systemctl enable --now docker
+# Docker may be installed through Ubuntu/Debian packages, Docker CE,
+# or Snap. Only manage docker.service when that systemd unit exists.
+if systemctl list-unit-files docker.service >/dev/null 2>&1; then
+    systemctl enable --now docker
+fi
 
+# The authoritative check is whether the Docker daemon is reachable.
 if ! docker info >/dev/null 2>&1; then
-    fail "Docker daemon is not working."
+    fail "Docker is installed, but the Docker daemon is not reachable."
 fi
 
 echo "Docker: $(docker --version)"
+
+if [[ "$(command -v docker)" == /snap/* ]]; then
+    echo "Docker installation: Snap"
+elif systemctl list-unit-files docker.service >/dev/null 2>&1; then
+    echo "Docker installation: systemd-managed"
+else
+    echo "Docker installation: externally managed"
+fi
 
 
 ########################################
