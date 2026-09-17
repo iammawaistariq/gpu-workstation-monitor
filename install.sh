@@ -413,8 +413,8 @@ info "9/13 - Configuring Grafana access"
 ENV_FILE="$INSTALL_DIR/.env"
 
 if [[ -f "$ENV_FILE" ]]; then
-    ADMIN_PASSWORD="$(grep '^GRAFANA_ADMIN_PASSWORD=' "$ENV_FILE" | cut -d= -f2-)"
-    SAVED_GRAFANA_PORT="$(grep '^GRAFANA_PORT=' "$ENV_FILE" | cut -d= -f2-)"
+    ADMIN_PASSWORD="$(grep '^GRAFANA_ADMIN_PASSWORD=' "$ENV_FILE" 2>/dev/null | cut -d= -f2- || true)"
+    SAVED_GRAFANA_PORT="$(grep '^GRAFANA_PORT=' "$ENV_FILE" 2>/dev/null | cut -d= -f2- || true)"
 else
     ADMIN_PASSWORD=""
     SAVED_GRAFANA_PORT=""
