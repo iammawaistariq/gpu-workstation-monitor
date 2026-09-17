@@ -168,58 +168,10 @@ Grafana kiosk mode for normal users.
 
 ---
 
-## 8. Development Repository Workflow
 
-The development repository is normally:
 
-    ~/gpu-monitoring-package
 
-Check repository:
-
-    cd ~/gpu-monitoring-package
-    git status
-    git branch --show-current
-    git log -5 --oneline --decorate
-
-Review changes:
-
-    git diff
-    git diff --stat
-    git diff --check
-
----
-
-## 9. Validate Before Commit
-
-Run:
-
-    cd ~/gpu-monitoring-package
-    bash -n install.sh
-    docker compose config >/dev/null
-    jq empty grafana/dashboards/gpu-monitoring-dashboard-v2.json
-    git diff --check
-
-All commands should complete successfully before committing.
-
----
-
-## 10. Commit and Push Changes
-
-    cd ~/gpu-monitoring-package
-    git status
-    git diff --stat
-    git diff --check
-    git add -A
-    git status --short
-    git diff --cached --check
-    git commit -m "Describe the change"
-    git push origin main
-    git status
-    git log -1 --oneline --decorate
-
----
-
-## 11. Deploy Latest Version on a Workstation
+## 8. Deploy Latest Version on a Workstation
 
 Use this deployment command:
 
@@ -238,7 +190,7 @@ The installer manages the actual installation under:
 
 ---
 
-## 12. Verify Deployment
+## 9. Verify Deployment
 
 Check deployed Git commit:
 
@@ -268,23 +220,17 @@ Check GPU:
 
 ---
 
-## 13. Recommended Workflow for Future Changes
+## 10. Recommended Deployment Workflow
 
-Use GitHub as the source of truth:
+For workstation deployment and maintenance:
 
-    Edit development repository
+    Deploy latest published version
             |
             v
-    Validate changes
+    Run installer
             |
             v
-    Test locally
-            |
-            v
-    git add / commit / push
-            |
-            v
-    Deploy latest GitHub version
+    Verify monitoring services
             |
             v
     Verify Grafana + Prometheus + Guardian

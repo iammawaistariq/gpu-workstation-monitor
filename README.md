@@ -1,121 +1,37 @@
 # GPU Workstation Monitor
 
-A deployable monitoring and safety stack for NVIDIA-powered Linux workstations.
+A GPU monitoring and safety system for NVIDIA Linux workstations.
 
-It provides real-time GPU and system monitoring using **Grafana, Prometheus, NVIDIA DCGM Exporter, Node Exporter, and GPU Guardian**.
-
-Designed for AI/ML workstations, research labs, training machines, and shared GPU systems.
-
----
+It combines Grafana, Prometheus, NVIDIA DCGM Exporter, Node Exporter,
+and an independent GPU Guardian service to provide real-time monitoring,
+health detection, and workstation-level GPU safety.
 
 ## Features
 
 - Real-time NVIDIA GPU monitoring
-- GPU temperature, utilization, VRAM, clock and power monitoring
-- CPU and RAM monitoring
-- Overall GPU, CPU, memory and system health scores
-- GPU operating-state detection
-- Grafana dashboard with dedicated Guidance tab
-- Prometheus health and scoring rules
-- NVIDIA DCGM Exporter
-- Node Exporter
-- GPU Guardian safety service
+- GPU utilization, temperature, VRAM, power, and clock monitoring
+- Prometheus-based GPU health rules
+- Independent GPU Guardian safety service
+- Grafana monitoring dashboard
+- Anonymous view-only access for normal users
+- Administrator-only dashboard editing
+- Grafana kiosk mode
 - Automatic startup after reboot
-- Anonymous view-only dashboard access
-- No login required for normal users
-- Administrator-only edit mode
 - Automatic Chrome dashboard opening
 - Managed Chrome bookmark
-- Linux application shortcut
-- Docker-based deployment
-- Automatic dependency installation
-- Installation verification and health checks
+- Repeatable deployment across workstations
 
----
-
-## GPU Status Detection
-
-The dashboard can report:
-
-- IDLE
-- ACTIVE — HEALTHY
-- HIGH TEMPERATURE
-- REDUCED CLOCK
-- VRAM PRESSURE
-- VRAM CRITICAL
-- POSSIBLE POWER THROTTLING
-- POSSIBLE THERMAL THROTTLING
-- EMERGENCY
-
----
-
-## Architecture
-
-    NVIDIA GPU
-        |
-        +--> DCGM Exporter --------+
-                                   |
-    Linux System                   |
-        |                          |
-        +--> Node Exporter --------+--> Prometheus
-                                          |
-                                          +--> Health Rules
-                                          |
-                                          +--> Grafana
-                                                 |
-                                                 +--> Dashboard
-                                                 +--> Guidance
-
-    NVIDIA GPU
-        |
-        +--> GPU Guardian
-                |
-                +--> Safety monitoring
-                +--> Desktop warnings
-                +--> Emergency detection
-
----
-
-## Components
-
-| Component | Purpose |
-|---|---|
-| Grafana | Monitoring dashboard and visualization |
-| Prometheus | Metrics collection and health-rule evaluation |
-| DCGM Exporter | NVIDIA GPU telemetry |
-| Node Exporter | CPU, RAM and Linux system telemetry |
-| GPU Guardian | Independent GPU safety monitor |
-| systemd | Automatic Guardian startup and recovery |
-| Chrome Policy | Dashboard startup and managed bookmark |
-
----
-
-## Supported Systems
-
-Currently designed for:
+## Requirements
 
 - Ubuntu / Debian Linux
 - NVIDIA GPU
-- Working NVIDIA proprietary driver with `nvidia-smi`
-- x86_64 / amd64 recommended
-- Graphical Linux desktop for automatic dashboard opening
-
-The installer verifies that the NVIDIA GPU driver is operational before continuing.
-
----
-
-## Administrator & Maintenance Guide
-
-For administrator login, Grafana UI editing, service management,
-troubleshooting, deployment, and Git workflow, see:
-
-**[Administrator & Maintenance Guide](docs/ADMIN-GUIDE.md)**
-
----
+- Working NVIDIA driver (`nvidia-smi`)
+- Internet connection during installation
+- Graphical desktop recommended for automatic dashboard opening
 
 ## Quick Installation
 
-Clone and install with one command block:
+Run:
 
     cd "$HOME" && \
     rm -rf "$HOME/gpu-workstation-monitor" && \
@@ -124,221 +40,86 @@ Clone and install with one command block:
     chmod +x install.sh && \
     sudo ./install.sh
 
-The installer configures the monitoring stack and required dependencies automatically.
+The installer automatically configures the required monitoring services,
+dashboard, GPU Guardian, access controls, and browser integration.
 
 A reboot is recommended after the first installation.
 
----
-
 ## Dashboard Access
 
-After installation, the installer resolves the dashboard URL directly from Grafana.
+The dashboard opens automatically through the configured Chrome integration.
 
-The final dashboard URL is printed at the end of installation and is also configured automatically in the Chrome integration.
+Normal workstation users:
 
-The monitoring dashboard opens automatically through the configured Chrome policy.
-
-Normal workstation users do **not** need a Grafana login.
-
----
-
-## Access Model
-
-Normal users:
-
-- No username or password required
-- View-only dashboard
-- Cannot edit dashboard panels
-- Cannot modify Grafana configuration
+- Do not need a Grafana login
+- Receive view-only access
+- Use the dashboard in Grafana kiosk mode
+- Cannot modify dashboard panels or Grafana configuration
 
 Grafana and Prometheus are bound to localhost by default.
 
----
+## Administrator Access
 
-## Administrator Edit Mode
-
-Temporarily enable dashboard editing:
+Enable administrator/edit mode:
 
     sudo gpu-monitor-edit-on
 
-View locally generated administrator credentials:
+Display the locally generated administrator credentials:
 
     sudo cat /etc/gpu-monitoring/admin-credentials
 
-When finished, return to normal locked mode:
+When administration is complete, return the dashboard to normal view-only mode:
 
     sudo gpu-monitor-edit-off
 
-Administrator credentials are generated locally during installation and are **not stored in this repository**.
+## Complete Administration Guide
 
----
+For Grafana administrator login, dashboard UI editing, service management,
+health checks, troubleshooting, maintenance, updates, and deployment on
+additional workstations, see:
 
-## GPU Guardian
+**[Administrator & Maintenance Guide](docs/ADMIN-GUIDE.md)**
 
-GPU Guardian runs independently as a system-level service.
+## Core Services
 
-Check status:
+| Service | Purpose |
+|---|---|
+| Grafana | Dashboard and visualization |
+| Prometheus | Metrics collection and health rules |
+| DCGM Exporter | NVIDIA GPU telemetry |
+| Node Exporter | Linux system telemetry |
+| GPU Guardian | Independent GPU safety monitoring |
 
-    systemctl status gpu-guardian
+## Service Status
 
-View recent activity:
-
-    sudo tail -50 /var/log/gpu-monitoring/guardian.log
-
-GPU Guardian monitors:
-
-- GPU temperature
-- GPU power
-- VRAM usage
-- Warning state
-- Critical state
-- Emergency state
-
-Automatic workload termination is currently disabled:
-
-    DRY_RUN=true
-
-This provides a safe default while the protection logic is being validated across different systems.
-
----
-
-## Docker Services
-
-Check the monitoring stack:
+Monitoring stack:
 
     cd /opt/gpu-monitoring
     sudo docker compose ps
 
-Expected services:
+GPU Guardian:
 
-- grafana
-- prometheus
-- dcgm-exporter
-- node-exporter
+    systemctl status gpu-guardian
 
----
+GPU:
 
-## Automatic Startup
+    nvidia-smi
 
-After installation:
+## Important Locations
 
-- Docker starts automatically
-- Monitoring containers restart automatically
-- GPU Guardian starts automatically
-- Grafana becomes available automatically
-- Dashboard opens when a graphical user logs in
-- Dashboard opens whenever Chrome is started
-- GPU Monitoring remains available through the managed Chrome bookmark
+Installed application:
 
----
+    /opt/gpu-monitoring
 
-## Repository Structure
+Administrator credentials:
 
-    gpu-workstation-monitor/
-    ├── browser/
-    │   ├── gpu-monitoring-autostart.desktop
-    │   └── gpu-monitoring.desktop
-    │
-    ├── grafana/
-    │   ├── dashboards/
-    │   │   └── gpu-monitoring-dashboard-v2.json
-    │   └── provisioning/
-    │       └── datasources/
-    │           └── prometheus.yml
-    │
-    ├── guardian/
-    │   ├── gpu-guardian.service
-    │   └── gpu_guardian_daemon.sh
-    │
-    ├── prometheus/
-    │   ├── prometheus.yml
-    │   └── rules/
-    │       └── gpu_health_rules.yml
-    │
-    ├── docker-compose.yml
-    ├── install.sh
-    ├── .gitignore
-    └── README.md
+    /etc/gpu-monitoring/admin-credentials
 
----
+Grafana:
 
-## Monitoring Philosophy
+    http://127.0.0.1:3000
 
-High GPU utilization is **not automatically treated as a problem**.
+Prometheus:
 
-AI training, inference, rendering and other compute-heavy workloads may legitimately use close to **100% GPU utilization**.
+    http://127.0.0.1:9090
 
-The monitoring logic therefore evaluates related conditions together, including:
-
-- GPU temperature
-- GPU clock behavior
-- Power consumption
-- VRAM pressure
-- CPU health
-- System memory health
-
-For example:
-
-- High utilization + safe temperature + normal clock = healthy workload
-- Low clock while idle = normal power saving
-- High utilization + low clock + high temperature = possible thermal throttling
-
----
-
-## Installation Logs
-
-If installation fails, inspect:
-
-    cat /tmp/gpu-monitoring-install.log
-
-The installer performs configuration and service checks before reporting successful installation.
-
----
-
-## Updating
-
-Pull the latest version:
-
-    git pull
-
-Then rerun:
-
-    sudo ./install.sh
-
----
-
-## Important Notes
-
-The installer intentionally does **not** automatically replace the NVIDIA display driver.
-
-GPU driver installation may depend on:
-
-- GPU model
-- Linux kernel version
-- operating-system version
-- workstation configuration
-
-The installer instead verifies that `nvidia-smi` is operational before deployment continues.
-
----
-
-## Author
-
-**Muhammad Awais Tariq**
-
-GitHub: https://github.com/iammawaistariq
-
----
-
-## Project Status
-
-Active development.
-
-Current focus:
-
-- reliable NVIDIA workstation monitoring
-- GPU/system health visualization
-- safe view-only deployment
-- automated installation
-- GPU safety monitoring
-- reproducible multi-workstation deployment
