@@ -5,7 +5,7 @@ ConditionPathExists=/usr/bin/nvidia-smi
 
 [Service]
 Type=simple
-ExecStart=/opt/gpu-monitoring/scripts/gpu_guardian_daemon.sh
+ExecStart=__GPU_MONITOR_INSTALL_DIR__/scripts/gpu_guardian_daemon.sh
 
 Restart=always
 RestartSec=5

@@ -3,13 +3,34 @@
 set -Eeuo pipefail
 
 APP_NAME="gpu-monitoring"
-INSTALL_DIR="/opt/${APP_NAME}"
 SOURCE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Resolve the real workstation user even when installer runs with sudo.
+REAL_USER="${SUDO_USER:-$(id -un)}"
+
+if [[ "$REAL_USER" == "root" ]]; then
+    REAL_HOME="/root"
+else
+    REAL_HOME="$(getent passwd "$REAL_USER" | cut -d: -f6)"
+fi
+
+[[ -n "$REAL_HOME" ]] || {
+    echo "ERROR: unable to determine workstation home directory."
+    exit 1
+}
+
+BASE_DIR="${REAL_HOME}/${APP_NAME}"
+INSTALL_DIR="${BASE_DIR}/runtime"
+LOG_ROOT="${BASE_DIR}/logs"
+BACKUP_ROOT="${BASE_DIR}/backups"
 
 DASH_RESOURCE_NAME="gpu-monitoring"
 DASH_URL=""
 
-LOG="/tmp/gpu-monitoring-install.log"
+mkdir -p "${LOG_ROOT}/installer"
+chown -R "${REAL_USER}:${REAL_USER}" "$BASE_DIR" 2>/dev/null || true
+
+LOG="${LOG_ROOT}/installer/install-$(date +%Y%m%d-%H%M%S).log"
 
 # Private per-run workspace.
 # Avoid predictable /tmp filenames that can collide with files left by
@@ -296,7 +317,13 @@ fi
 
 nvidia-ctk runtime configure --runtime=docker
 
-systemctl restart docker
+if systemctl list-unit-files docker.service 2>/dev/null | grep -q '^docker.service'; then
+    systemctl restart docker
+elif command -v snap >/dev/null 2>&1 && snap services docker >/dev/null 2>&1; then
+    snap restart docker
+else
+    echo "Docker service is externally managed; restart skipped."
+fi
 
 sleep 3
 
@@ -348,6 +375,10 @@ fi
 ########################################
 
 info "8/13 - Installing GPU Monitoring package"
+
+mkdir -p     "$INSTALL_DIR"     "$LOG_ROOT/installer"     "$LOG_ROOT/guardian"     "$LOG_ROOT/maintenance"     "$BACKUP_ROOT/grafana"     "$BACKUP_ROOT/prometheus"
+
+chown -R "${REAL_USER}:${REAL_USER}" "$BASE_DIR"
 
 mkdir -p "$INSTALL_DIR"
 
@@ -866,7 +897,8 @@ cp \
 
 # Ensure service points to portable installed path.
 sed -i \
-    's#^ExecStart=.*#ExecStart=/opt/gpu-monitoring/scripts/gpu_guardian_daemon.sh#' \
+    -e "s#__GPU_MONITOR_INSTALL_DIR__#${INSTALL_DIR}#g" \
+    -e "/^\[Service\]/a Environment=GPU_MONITOR_LOG_DIR=${LOG_ROOT}/guardian" \
     /etc/systemd/system/gpu-guardian.service
 
 systemctl daemon-reload
@@ -1101,7 +1133,7 @@ echo "GPU Guardian:"
 echo "  systemctl status gpu-guardian"
 echo
 echo "Docker stack:"
-echo "  cd /opt/gpu-monitoring"
+echo "  cd ${INSTALL_DIR}"
 echo "  sudo docker compose ps"
 echo
 echo "The dashboard will:"

@@ -8,6 +8,34 @@ Administrator mode should only be enabled when dashboard changes are required.
 
 ---
 
+
+## Local Storage Layout
+
+GPU Monitoring keeps runtime data outside the replaceable Git clone:
+
+    ~/gpu-monitoring/
+    ├── gpu-workstation-monitor/   # GitHub source clone
+    ├── runtime/                   # deployed monitoring stack
+    ├── logs/
+    │   ├── installer/
+    │   ├── guardian/
+    │   └── maintenance/
+    └── backups/
+        ├── grafana/
+        └── prometheus/
+
+The source clone can be replaced during deployment without deleting
+persistent monitoring logs or backups.
+
+Installer logs:
+
+    ~/gpu-monitoring/logs/installer/
+
+GPU Guardian log:
+
+    ~/gpu-monitoring/logs/guardian/guardian.log
+
+
 ## 1. Enable Grafana Administrator / Edit Mode
 
 Enable administrator editing:
@@ -34,7 +62,7 @@ This returns the installation to its normal view-only configuration.
 
 ## 2. Check Monitoring Stack
 
-    cd /opt/gpu-monitoring
+    cd $HOME/gpu-monitoring/runtime
     sudo docker compose ps
 
 Expected services:
@@ -50,17 +78,17 @@ Expected services:
 
 Restart everything:
 
-    cd /opt/gpu-monitoring
+    cd $HOME/gpu-monitoring/runtime
     sudo docker compose restart
 
 Restart only Grafana:
 
-    cd /opt/gpu-monitoring
+    cd $HOME/gpu-monitoring/runtime
     sudo docker compose restart grafana
 
 Restart only Prometheus:
 
-    cd /opt/gpu-monitoring
+    cd $HOME/gpu-monitoring/runtime
     sudo docker compose restart prometheus
 
 ---
@@ -69,22 +97,22 @@ Restart only Prometheus:
 
 Grafana:
 
-    cd /opt/gpu-monitoring
+    cd $HOME/gpu-monitoring/runtime
     sudo docker compose logs --tail=100 grafana
 
 Grafana live logs:
 
-    cd /opt/gpu-monitoring
+    cd $HOME/gpu-monitoring/runtime
     sudo docker compose logs -f grafana
 
 Prometheus:
 
-    cd /opt/gpu-monitoring
+    cd $HOME/gpu-monitoring/runtime
     sudo docker compose logs --tail=100 prometheus
 
 DCGM exporter:
 
-    cd /opt/gpu-monitoring
+    cd $HOME/gpu-monitoring/runtime
     sudo docker compose logs --tail=100 dcgm-exporter
 
 ---
@@ -141,7 +169,7 @@ Check Docker containers:
 
 Installed application:
 
-    /opt/gpu-monitoring
+    $HOME/gpu-monitoring/runtime
 
 Deployment source checkout:
 
@@ -186,7 +214,7 @@ This replaces the local source checkout with the latest GitHub version.
 
 The installer manages the actual installation under:
 
-    /opt/gpu-monitoring
+    $HOME/gpu-monitoring/runtime
 
 ---
 
@@ -199,7 +227,7 @@ Check deployed Git commit:
 
 Check monitoring services:
 
-    cd /opt/gpu-monitoring
+    cd $HOME/gpu-monitoring/runtime
     sudo docker compose ps
 
 Check Guardian:
@@ -236,4 +264,4 @@ For workstation deployment and maintenance:
     Verify Grafana + Prometheus + Guardian
 
 Avoid manually maintaining different versions of the application under
-/opt/gpu-monitoring on individual workstations.
+$HOME/gpu-monitoring/runtime on individual workstations.

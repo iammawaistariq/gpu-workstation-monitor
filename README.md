@@ -94,7 +94,7 @@ additional workstations, see:
 
 Monitoring stack:
 
-    cd /opt/gpu-monitoring
+    cd $HOME/gpu-monitoring/runtime
     sudo docker compose ps
 
 GPU Guardian:
@@ -109,7 +109,7 @@ GPU:
 
 Installed application:
 
-    /opt/gpu-monitoring
+    $HOME/gpu-monitoring/runtime
 
 Administrator credentials:
 

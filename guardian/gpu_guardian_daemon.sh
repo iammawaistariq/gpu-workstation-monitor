@@ -5,7 +5,16 @@
 # Portable system-level version
 ########################################
 
-LOG_DIR="/var/log/gpu-monitoring"
+REAL_USER="${SUDO_USER:-${USER:-root}}"
+
+if [[ "$REAL_USER" == "root" ]]; then
+    REAL_HOME="/root"
+else
+    REAL_HOME="$(getent passwd "$REAL_USER" 2>/dev/null | cut -d: -f6)"
+fi
+
+# When started by systemd, use the installation path supplied by installer.
+LOG_DIR="${GPU_MONITOR_LOG_DIR:-${REAL_HOME}/gpu-monitoring/logs/guardian}"
 LOG="$LOG_DIR/guardian.log"
 
 DRY_RUN=true
