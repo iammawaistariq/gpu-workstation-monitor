@@ -104,6 +104,15 @@ The installer verifies that the NVIDIA GPU driver is operational before continui
 
 ---
 
+## Administrator & Maintenance Guide
+
+For administrator login, Grafana UI editing, service management,
+troubleshooting, deployment, and Git workflow, see:
+
+**[Administrator & Maintenance Guide](docs/ADMIN-GUIDE.md)**
+
+---
+
 ## Quick Installation
 
 Clone and install with one command block:
